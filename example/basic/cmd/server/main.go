@@ -31,7 +31,7 @@ func main() {
 func v1postGraphQLHandler() http.HandlerFunc {
 	es := generated.NewExecutableSchema(generated.Config{
 		Resolvers: &resolver.Resolver{
-			Todos: []*model.Todo{
+			TodoList: []*model.Todo{
 				{ID: "1", Text: "todo1", Done: false},
 				{ID: "2", Text: "todo2", Done: true},
 			},
