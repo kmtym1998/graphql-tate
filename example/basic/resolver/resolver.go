@@ -8,4 +8,5 @@ import "github.com/kmtym1998/graphql-tate/example/model"
 
 type Resolver struct {
 	TodoList []*model.Todo
+	UserList []*model.User
 }
