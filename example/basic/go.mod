@@ -4,6 +4,7 @@ go 1.22.1
 
 require (
 	github.com/99designs/gqlgen v0.17.45
+	github.com/lmittmann/tint v1.0.4
 	github.com/vektah/gqlparser/v2 v2.5.11
 )
 

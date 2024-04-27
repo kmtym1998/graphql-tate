@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -8,9 +9,17 @@ import (
 	"github.com/kmtym1998/graphql-tate/example/generated"
 	"github.com/kmtym1998/graphql-tate/example/model"
 	"github.com/kmtym1998/graphql-tate/example/resolver"
+	"github.com/lmittmann/tint"
 )
 
 func main() {
+	slog.SetDefault(slog.New(tint.NewHandler(
+		os.Stdout,
+		&tint.Options{
+			AddSource: true,
+		},
+	)))
+
 	mux := http.NewServeMux()
 
 	mux.Handle("POST /v1/graphql", v1postGraphQLHandler())
@@ -20,6 +29,11 @@ func main() {
 		port = "8080"
 	}
 
+	slog.Info(
+		"Server is running",
+		slog.String("port", port),
+		"address", "http://localhost:"+port+"/v1/graphql",
+	)
 	if err := http.ListenAndServe(
 		":"+port,
 		mux,
