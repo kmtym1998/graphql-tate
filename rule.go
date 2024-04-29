@@ -54,13 +54,19 @@ func OR(
 	rules ...RuleFunc,
 ) RuleFunc {
 	return func(ctx context.Context, args ast.ArgumentList, variable interface{}) error {
+
+		errs := make([]error, 0, len(rules))
 		for _, rule := range rules {
 			if err := rule(ctx, args, variable); err != nil {
-				return err
+				errs = append(errs, err)
+
+				continue
 			}
+
+			return nil
 		}
 
-		return nil
+		return errors.Join(errs...)
 	}
 }
 
