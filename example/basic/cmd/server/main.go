@@ -87,15 +87,15 @@ var isViewer tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ int
 }
 
 var permission = tate.RootFieldPermission{
-	ast.Query: {
-		"user":  tate.OR(isAdmin, isEditor, isViewer),
-		"users": tate.OR(isAdmin, isEditor, isViewer),
-		"todos": tate.OR(isAdmin, isEditor, isViewer),
+	ast.Query: tate.ChildFieldPermission{
+		"user": tate.ChildFieldPermission{
+			"id":   tate.OR(isEditor, isAdmin),
+			"name": tate.OR(isViewer, isEditor, isAdmin),
+		},
+		"todos": tate.OR(isViewer, isEditor, isAdmin),
 	},
-	ast.Mutation: {
-		"createTodo":     tate.OR(isAdmin, isEditor),
-		"updateTodoDone": tate.OR(isAdmin, isEditor),
-		"createUser":     tate.OR(isAnonymous, isAdmin),
+	ast.Mutation: tate.ChildFieldPermission{
+		"createTodo": isAnonymous,
 	},
 }
 
