@@ -43,6 +43,10 @@ func (t *Tate) SetErrorMessageBuilder(f func(ctx context.Context, fieldName stri
 	t.messageBuilder = f
 }
 
+func (t *Tate) SetExtensionsBuilder(f func(ctx context.Context, fieldName string) map[string]interface{}) {
+	t.extensionsBuilder = f
+}
+
 func (t *Tate) AroundFields(ctx context.Context, next graphql.Resolver) (res interface{}, err error) {
 	operationCtx := graphql.GetOperationContext(ctx)
 	fieldCtx := graphql.GetFieldContext(ctx)
