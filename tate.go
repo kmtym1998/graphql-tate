@@ -10,8 +10,9 @@ import (
 )
 
 type Tate struct {
-	messageBuilder func(ctx context.Context, fieldName string) string
-	permission     PermissionDef
+	messageBuilder    func(ctx context.Context, fieldName string) string
+	extensionsBuilder func(ctx context.Context, fieldName string) map[string]interface{}
+	permission        PermissionDef
 }
 
 func NewTate(perm PermissionDef) (*Tate, error) {
@@ -22,6 +23,11 @@ func NewTate(perm PermissionDef) (*Tate, error) {
 	return &Tate{
 		messageBuilder: func(ctx context.Context, fieldName string) string {
 			return fmt.Sprintf("permission denied for %s", fieldName)
+		},
+		extensionsBuilder: func(ctx context.Context, fieldName string) map[string]interface{} {
+			return map[string]interface{}{
+				"fieldName": fieldName,
+			}
 		},
 		permission: perm,
 	}, nil
@@ -70,6 +76,37 @@ func (t *Tate) AroundResponses(ctx context.Context, next graphql.ResponseHandler
 		return &graphql.Response{
 			Errors: graphqlErrors,
 			Path:   fieldCtx.Path(),
+		}
+	}
+
+	return next(ctx)
+}
+
+func (t *Tate) AroundFields(ctx context.Context, next graphql.Resolver) (res interface{}, err error) {
+	operationCtx := graphql.GetOperationContext(ctx)
+	fieldCtx := graphql.GetFieldContext(ctx)
+
+	fieldName := fieldCtx.Field.Name
+	operationName := operationCtx.Operation.Operation
+	variables := operationCtx.Variables
+
+	// TODO: fetch fields recursively
+	rule, ok := t.permission[operationName][fieldName]
+	if !ok {
+		return next(ctx)
+	}
+
+	if err := rule(ctx, fieldCtx.Field.Arguments, variables); err != nil {
+		return nil, &gqlerror.Error{
+			Message: fmt.Sprintf("%s: %s", t.messageBuilder(ctx, fieldName), err.Error()),
+			Path:    fieldCtx.Path(),
+			Locations: []gqlerror.Location{
+				{
+					Line:   fieldCtx.Field.Position.Line,
+					Column: fieldCtx.Field.Position.Column,
+				},
+			},
+			Extensions: t.extensionsBuilder(ctx, fieldName),
 		}
 	}
 
