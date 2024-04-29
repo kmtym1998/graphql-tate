@@ -57,3 +57,9 @@ func AND(
 		return nil
 	}
 }
+
+func Any() RuleFunc {
+	return func(ctx context.Context, args ast.ArgumentList, variable interface{}) error {
+		return nil
+	}
+}
