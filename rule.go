@@ -63,3 +63,9 @@ func Any() RuleFunc {
 		return nil
 	}
 }
+
+func None() RuleFunc {
+	return func(ctx context.Context, args ast.ArgumentList, variable interface{}) error {
+		return fmt.Errorf("no permission allowed for this field")
+	}
+}
