@@ -9,21 +9,47 @@ import (
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
+// Permitter is an interface that all permission types must implement
+// It can be RuleFunc or ChildFieldPermission
+type Permitter interface {
+	isPermitter()
+}
+
+type RootFieldPermission map[ast.Operation]Permitter
+
+// ChildFieldPermission is a map of field name to RuleFunc
+type ChildFieldPermission map[string]Permitter
+
+var _ Permitter = ChildFieldPermission{}
+
+func (ChildFieldPermission) isPermitter() {}
+
+// RuleFunc is a function that checks if the user has permission to access the field
+// It returns nil if the user has permission, otherwise it returns an error
 type RuleFunc func(ctx context.Context, args ast.ArgumentList, variable interface{}) error
 
-type PermissionDef map[ast.Operation]map[string]RuleFunc
+var _ Permitter = RuleFunc(nil)
 
-func (p PermissionDef) validate() error {
+func (RuleFunc) isPermitter() {}
+
+func (p ChildFieldPermission) validate() error {
 	operations := []ast.Operation{ast.Query, ast.Mutation, ast.Subscription}
-	for op, rules := range p {
+	for op, permitter := range p {
 		if !slices.Contains(operations, op) {
 			return errors.New("invalid operation")
 		}
 
-		for fieldName, rule := range rules {
-			if rule == nil {
-				return fmt.Errorf("RuleFunc for %s is nil", fieldName)
+		switch v := permitter.(type) {
+		case RuleFunc:
+			if v == nil {
+				return errors.New("invalid permitter. RuleFunc cannot be nil")
 			}
+		case ChildFieldPermission:
+			if err := v.validate(); err != nil {
+				return fmt.Errorf("invalid permitter: %w", err)
+			}
+		default:
+			return errors.New("invalid permitter")
 		}
 	}
 
@@ -55,6 +81,18 @@ func AND(
 		}
 
 		return nil
+	}
+}
+
+func NOT(
+	rule RuleFunc,
+) RuleFunc {
+	return func(ctx context.Context, args ast.ArgumentList, variable interface{}) error {
+		if err := rule(ctx, args, variable); err != nil {
+			return nil
+		}
+
+		return fmt.Errorf("permission denied")
 	}
 }
 
