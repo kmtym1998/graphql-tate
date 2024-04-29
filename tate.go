@@ -6,10 +6,12 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/vektah/gqlparser/v2/ast"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 type Tate struct {
-	permission PermissionDef
+	messageBuilder func(ctx context.Context, fieldName string) string
+	permission     PermissionDef
 }
 
 func NewTate(perm PermissionDef) (*Tate, error) {
@@ -18,19 +20,20 @@ func NewTate(perm PermissionDef) (*Tate, error) {
 	}
 
 	return &Tate{
+		messageBuilder: func(ctx context.Context, fieldName string) string {
+			return fmt.Sprintf("permission denied for %s", fieldName)
+		},
 		permission: perm,
 	}, nil
 }
 
-// TODO: ほんとうにエラーを返すで良いかどうかは検討が必要
-func (t *Tate) Check(ctx context.Context) error {
-	operationCtx := graphql.GetOperationContext(ctx)
-	if operationCtx == nil {
-		return fmt.Errorf("operation context not found")
-	}
+func (t *Tate) SetErrorMessageBuilder(f func(ctx context.Context, fieldName string) string) {
+	t.messageBuilder = f
+}
 
-	op := operationCtx.Operation.Operation
-	variables := operationCtx.Variables
+func (t *Tate) AroundResponses(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
+	operationCtx := graphql.GetOperationContext(ctx)
+	fieldCtx := graphql.GetFieldContext(ctx)
 
 	var fieldNames []string
 	var args ast.ArgumentList
@@ -44,16 +47,31 @@ func (t *Tate) Check(ctx context.Context) error {
 		args = f.Arguments
 	}
 
+	operationName := operationCtx.Operation.Operation
+	variables := operationCtx.Variables
+
+	var graphqlErrors gqlerror.List
 	for _, fieldName := range fieldNames {
-		rule, ok := t.permission[op][fieldName]
+		rule, ok := t.permission[operationName][fieldName]
 		if !ok {
-			return fmt.Errorf("permission not found for %s.%s", op, fieldName)
+			graphqlErrors = append(graphqlErrors, &gqlerror.Error{
+				Message: t.messageBuilder(ctx, fieldName),
+			})
 		}
 
 		if err := rule(ctx, args, variables); err != nil {
-			return fmt.Errorf("permission denied for %s.%s", op, fieldName)
+			graphqlErrors = append(graphqlErrors, &gqlerror.Error{
+				Message: fmt.Sprintf("%s: %s", t.messageBuilder(ctx, fieldName), err.Error()),
+			})
 		}
 	}
 
-	return nil
+	if len(graphqlErrors) > 0 {
+		return &graphql.Response{
+			Errors: graphqlErrors,
+			Path:   fieldCtx.Path(),
+		}
+	}
+
+	return next(ctx)
 }
