@@ -3,7 +3,6 @@ package tate
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/vektah/gqlparser/v2/gqlerror"
@@ -48,16 +47,8 @@ func (t *Tate) AroundFields(ctx context.Context, next graphql.Resolver) (res int
 	operationCtx := graphql.GetOperationContext(ctx)
 	fieldCtx := graphql.GetFieldContext(ctx)
 
-	fieldName := fieldCtx.Field.Name
 	operationName := operationCtx.Operation.Operation
 	variables := operationCtx.Variables
-
-	slog.Debug(
-		"checking permission",
-		"fieldName", fieldName,
-		"operationName", operationName,
-		"variables", variables,
-	)
 
 	fieldNames := getCurrentAndParentFieldNames(fieldCtx)
 
