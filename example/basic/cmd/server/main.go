@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/go-chi/chi/v5"
+	tate "github.com/kmtym1998/graphql-tate"
 	"github.com/kmtym1998/graphql-tate/example/generated"
+	"github.com/kmtym1998/graphql-tate/example/middleware"
 	"github.com/kmtym1998/graphql-tate/example/model"
 	"github.com/kmtym1998/graphql-tate/example/resolver"
 	"github.com/lmittmann/tint"
@@ -24,9 +26,14 @@ func main() {
 		},
 	)))
 
-	mux := http.NewServeMux()
+	r := chi.NewRouter()
+	r.Use(middleware.InjectRole)
 
-	mux.Handle("POST /v1/graphql", v1postGraphQLHandler())
+	tate, err := tate.New(permission)
+	if err != nil {
+		panic(err)
+	}
+	r.Post("/v1/graphql", v1postGraphQLHandler(tate))
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -38,15 +45,61 @@ func main() {
 		slog.String("port", port),
 		"address", "http://localhost:"+port+"/v1/graphql",
 	)
-	if err := http.ListenAndServe(
-		":"+port,
-		mux,
-	); err != nil {
+	if err := http.ListenAndServe(":"+port, r); err != nil {
 		panic(err)
 	}
 }
 
-func v1postGraphQLHandler() http.HandlerFunc {
+var isAnonymous tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ interface{}) error {
+	roleName := middleware.RoleFrom(ctx)
+	if roleName == "anonymous" {
+		return nil
+	}
+
+	return fmt.Errorf("role is not anonymous")
+}
+
+var isAdmin tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ interface{}) error {
+	roleName := middleware.RoleFrom(ctx)
+	if roleName == "admin" {
+		return nil
+	}
+
+	return fmt.Errorf("role is not admin")
+}
+
+var isEditor tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ interface{}) error {
+	roleName := middleware.RoleFrom(ctx)
+	if roleName == "editor" {
+		return nil
+	}
+
+	return fmt.Errorf("role is not editor")
+}
+
+var isViewer tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ interface{}) error {
+	roleName := middleware.RoleFrom(ctx)
+	if roleName == "viewer" {
+		return nil
+	}
+
+	return fmt.Errorf("role is not viewer")
+}
+
+var permission = tate.RootFieldPermission{
+	ast.Query: {
+		"user":  tate.OR(isAdmin, isEditor, isViewer),
+		"users": tate.OR(isAdmin, isEditor, isViewer),
+		"todos": tate.OR(isAdmin, isEditor, isViewer),
+	},
+	ast.Mutation: {
+		"createTodo":     tate.OR(isAdmin, isEditor),
+		"updateTodoDone": tate.OR(isAdmin, isEditor),
+		"createUser":     tate.OR(isAnonymous, isAdmin),
+	},
+}
+
+func v1postGraphQLHandler(tate *tate.Tate) http.HandlerFunc {
 	user1 := &model.User{ID: "U1", Name: "user1"}
 	user2 := &model.User{ID: "U2", Name: "user2"}
 	todo1 := &model.Todo{ID: "1", Text: "todo1", Done: false, User: user1}
@@ -71,36 +124,7 @@ func v1postGraphQLHandler() http.HandlerFunc {
 
 	srv := handler.NewDefaultServer(es)
 
-	srv.AroundResponses(func(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
-		operationCtx := graphql.GetOperationContext(ctx)
-
-		slog.Info(
-			"OperationContext",
-			"operationCtx.Doc.Operations", fmt.Sprintf("%#v", operationCtx.Doc.Operations),
-		)
-
-		var rootFieldNames []string
-		for _, sel := range operationCtx.Doc.Operations[0].SelectionSet {
-			slog.Info(
-				"SelectionSet",
-				"sel", fmt.Sprintf("%#v", sel),
-			)
-
-			f, ok := sel.(*ast.Field)
-			if !ok {
-				continue
-			}
-
-			rootFieldNames = append(rootFieldNames, f.Name)
-		}
-
-		slog.Info(
-			"Responses",
-			"operationCtx", fmt.Sprintf("%#v", operationCtx),
-		)
-
-		return next(ctx)
-	})
+	srv.AroundFields(tate.AroundFields)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		srv.ServeHTTP(w, r)
