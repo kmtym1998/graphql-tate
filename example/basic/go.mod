@@ -4,6 +4,8 @@ go 1.22.1
 
 require (
 	github.com/99designs/gqlgen v0.17.45
+	github.com/go-chi/chi/v5 v5.0.12
+	github.com/kmtym1998/graphql-tate v0.0.0-20240429025906-24701e11e9eb
 	github.com/lmittmann/tint v1.0.4
 	github.com/vektah/gqlparser/v2 v2.5.11
 )
