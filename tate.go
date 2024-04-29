@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 type Tate struct {
@@ -58,20 +59,78 @@ func (t *Tate) AroundFields(ctx context.Context, next graphql.Resolver) (res int
 		"variables", variables,
 	)
 
-	fieldNames := getCurrentAndParentFieldNames(ctx)
+	fieldNames := getCurrentAndParentFieldNames(fieldCtx)
 
-	slog.Info(
-		"fields",
-		"fieldNames", fieldNames,
-		"len(fieldNames)", len(fieldNames),
-	)
+	for _, fieldName := range fieldNames {
+		permitter, ok := t.permission[operationName]
+		if !ok {
+			continue
+		}
+
+		switch v := permitter.(type) {
+		case RuleFunc:
+			if err := v(ctx, fieldCtx.Field.Arguments, variables); err != nil {
+				return nil, &gqlerror.Error{
+					Message:    t.messageBuilder(ctx, fieldName),
+					Extensions: t.extensionsBuilder(ctx, fieldName),
+					Path:       graphql.GetPath(ctx),
+					Err:        err,
+				}
+			}
+		case ChildFieldPermission:
+			ruleFunc := t.extractRuleFuncFromChildFieldPermission(
+				v,
+				fieldNames,
+			)
+			if ruleFunc == nil {
+				return next(ctx)
+			}
+
+			if err := ruleFunc(ctx, fieldCtx.Field.Arguments, variables); err != nil {
+				return nil, &gqlerror.Error{
+					Message:    t.messageBuilder(ctx, fieldName),
+					Extensions: t.extensionsBuilder(ctx, fieldName),
+					Path:       graphql.GetPath(ctx),
+					Err:        err,
+				}
+			}
+		default:
+			continue
+		}
+	}
 
 	return next(ctx)
 }
 
-func getCurrentAndParentFieldNames(ctx context.Context) []string {
-	fieldCtx := graphql.GetFieldContext(ctx)
+func (t *Tate) extractRuleFuncFromChildFieldPermission(
+	childFieldPermission ChildFieldPermission,
+	fieldNames []string,
+) RuleFunc {
+	for i, fieldName := range fieldNames {
+		permitter, ok := childFieldPermission[fieldName]
+		if !ok {
+			return nil
+		}
 
+		switch v := permitter.(type) {
+		case RuleFunc:
+			return v
+		case ChildFieldPermission:
+			descendantFieldNames := fieldNames[i+1:]
+
+			return t.extractRuleFuncFromChildFieldPermission(
+				v,
+				descendantFieldNames,
+			)
+		default:
+			panic("unexpected permitter type")
+		}
+	}
+
+	return nil
+}
+
+func getCurrentAndParentFieldNames(fieldCtx *graphql.FieldContext) []string {
 	fieldNames := []string{fieldCtx.Field.Name}
 	fieldCtxItr := fieldCtx
 	for {
