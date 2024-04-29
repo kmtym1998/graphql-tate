@@ -15,7 +15,7 @@ type Tate struct {
 	permission        PermissionDef
 }
 
-func NewTate(perm PermissionDef) (*Tate, error) {
+func New(perm PermissionDef) (*Tate, error) {
 	if err := perm.validate(); err != nil {
 		return nil, fmt.Errorf("invalid permission: %w", err)
 	}
