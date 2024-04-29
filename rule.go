@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -33,12 +32,7 @@ var _ Permitter = RuleFunc(nil)
 func (RuleFunc) isPermitter() {}
 
 func (p ChildFieldPermission) validate() error {
-	operations := []ast.Operation{ast.Query, ast.Mutation, ast.Subscription}
-	for op, permitter := range p {
-		if !slices.Contains(operations, op) {
-			return errors.New("invalid operation")
-		}
-
+	for _, permitter := range p {
 		switch v := permitter.(type) {
 		case RuleFunc:
 			if v == nil {

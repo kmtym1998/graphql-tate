@@ -3,9 +3,9 @@ package tate
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 type Tate struct {
@@ -51,25 +51,56 @@ func (t *Tate) AroundFields(ctx context.Context, next graphql.Resolver) (res int
 	operationName := operationCtx.Operation.Operation
 	variables := operationCtx.Variables
 
-	// TODO: fetch fields recursively
-	rule, ok := t.permission[operationName][fieldName]
-	if !ok {
-		return next(ctx)
-	}
+	slog.Debug(
+		"checking permission",
+		"fieldName", fieldName,
+		"operationName", operationName,
+		"variables", variables,
+	)
 
-	if err := rule(ctx, fieldCtx.Field.Arguments, variables); err != nil {
-		return nil, &gqlerror.Error{
-			Message: fmt.Sprintf("%s: %s", t.messageBuilder(ctx, fieldName), err.Error()),
-			Path:    fieldCtx.Path(),
-			Locations: []gqlerror.Location{
-				{
-					Line:   fieldCtx.Field.Position.Line,
-					Column: fieldCtx.Field.Position.Column,
-				},
-			},
-			Extensions: t.extensionsBuilder(ctx, fieldName),
-		}
-	}
+	fieldNames := getCurrentAndParentFieldNames(ctx)
+
+	slog.Info(
+		"fields",
+		"fieldNames", fieldNames,
+		"len(fieldNames)", len(fieldNames),
+	)
 
 	return next(ctx)
+}
+
+func getCurrentAndParentFieldNames(ctx context.Context) []string {
+	fieldCtx := graphql.GetFieldContext(ctx)
+
+	fieldNames := []string{fieldCtx.Field.Name}
+	fieldCtxItr := fieldCtx
+	for {
+		fieldCtxItr = fieldCtxItr.Parent
+
+		if fieldCtxItr == nil {
+			break
+		}
+
+		var parentFieldName string
+		if fieldCtxItr.Field.Field != nil {
+			parentFieldName = fieldCtxItr.Field.Field.Name
+		} else if fieldCtxItr.Parent != nil {
+			parentFieldName = fieldCtxItr.Parent.Field.Name
+			fieldCtxItr = fieldCtxItr.Parent
+		} else {
+			continue
+		}
+
+		fieldNames = append(fieldNames, parentFieldName)
+	}
+
+	return reverse(fieldNames)
+}
+
+func reverse[T any](s []T) []T {
+	n := len(s)
+	for i := 0; i < n/2; i++ {
+		s[i], s[n-1-i] = s[n-1-i], s[i]
+	}
+	return s
 }
