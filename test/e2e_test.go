@@ -19,7 +19,9 @@ func TestE2E(t *testing.T) {
 		Port: findAvailablePort(),
 		Tate: tate,
 	}
-	r.ListenAndServe() // nolint:errcheck
+	go func() {
+		r.ListenAndServe() // nolint:errcheck
+	}()
 
 	t.Skip("TODO: implement e2e test")
 }
