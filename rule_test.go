@@ -14,7 +14,6 @@ type ruleFuncTestCase struct {
 	expected error
 }
 
-var ctx = context.Background()
 var ruleWithNoErr RuleFunc = func(_ context.Context, _ ast.ArgumentList, _ interface{}) error {
 	return nil
 }
@@ -59,7 +58,7 @@ func TestOR(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			err := OR(tc.rules...)(ctx, nil, nil)
+			err := OR(tc.rules...)(nil, nil, nil)
 
 			if err != nil && (tc.expected == nil || err.Error() != tc.expected.Error()) {
 				t.Errorf("expected: `%#v`, got: `%#v`", tc.expected, err)
@@ -105,7 +104,41 @@ func TestAND(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			err := AND(tc.rules...)(ctx, nil, nil)
+			err := AND(tc.rules...)(nil, nil, nil)
+
+			if err != nil && (tc.expected == nil || err.Error() != tc.expected.Error()) {
+				t.Errorf("expected: `%#v`, got: `%#v`", tc.expected, err)
+			}
+		})
+	}
+}
+
+func TestNOT(t *testing.T) {
+	for _, tc := range []ruleFuncTestCase{
+		{
+			name:     "no rules",
+			rules:    nil,
+			expected: nil,
+		}, {
+			name:     "one rule with no error",
+			rules:    []RuleFunc{ruleWithNoErr},
+			expected: errors.New("error"),
+		}, {
+			name:     "one rule with error",
+			rules:    []RuleFunc{ruleWithErr},
+			expected: nil,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rule := func() RuleFunc {
+				if len(tc.rules) > 0 {
+					return tc.rules[0]
+				}
+
+				return nil
+			}()
+
+			err := NOT(rule, "error")(nil, nil, nil)
 
 			if err != nil && (tc.expected == nil || err.Error() != tc.expected.Error()) {
 				t.Errorf("expected: `%#v`, got: `%#v`", tc.expected, err)
