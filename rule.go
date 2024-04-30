@@ -32,18 +32,18 @@ var _ Permitter = RuleFunc(nil)
 func (RuleFunc) isPermitter() {}
 
 func (p ChildFieldPermission) validate() error {
-	for _, permitter := range p {
+	for field, permitter := range p {
 		switch v := permitter.(type) {
 		case RuleFunc:
 			if v == nil {
-				return errors.New("invalid permitter. RuleFunc cannot be nil")
+				return fmt.Errorf("invalid permitter. RuleFunc cannot be nil for field: %s", field)
 			}
 		case ChildFieldPermission:
 			if err := v.validate(); err != nil {
-				return fmt.Errorf("invalid permitter: %w", err)
+				return fmt.Errorf("child field has invalid permitter field: %s: %w", field, err)
 			}
 		default:
-			return errors.New("invalid permitter")
+			return fmt.Errorf("invalid permitter type: %T field: %s", permitter, field)
 		}
 	}
 
