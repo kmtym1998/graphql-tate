@@ -85,13 +85,18 @@ func AND(
 
 func NOT(
 	rule RuleFunc,
+	msg string,
 ) RuleFunc {
 	return func(ctx context.Context, args ast.ArgumentList, variable interface{}) error {
+		if rule == nil {
+			return nil
+		}
+
 		if err := rule(ctx, args, variable); err != nil {
 			return nil
 		}
 
-		return fmt.Errorf("permission denied")
+		return fmt.Errorf(msg)
 	}
 }
 
