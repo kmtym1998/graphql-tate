@@ -14,16 +14,15 @@ type ruleFuncTestCase struct {
 	expected error
 }
 
+var ctx = context.Background()
+var ruleWithNoErr RuleFunc = func(_ context.Context, _ ast.ArgumentList, _ interface{}) error {
+	return nil
+}
+var ruleWithErr RuleFunc = func(_ context.Context, _ ast.ArgumentList, _ interface{}) error {
+	return errors.New("error")
+}
+
 func TestOR(t *testing.T) {
-	var ruleWithNoErr RuleFunc = func(_ context.Context, _ ast.ArgumentList, _ interface{}) error {
-		return nil
-	}
-
-	var ruleWithErr RuleFunc = func(_ context.Context, _ ast.ArgumentList, _ interface{}) error {
-		return errors.New("error")
-	}
-
-	ctx := context.Background()
 	for _, tc := range []ruleFuncTestCase{
 		{
 			name:     "no rules",
@@ -67,4 +66,8 @@ func TestOR(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAnd(t *testing.T) {
+
 }
