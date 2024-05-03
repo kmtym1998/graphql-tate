@@ -8,7 +8,7 @@ import (
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
-var isAnonymous tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ interface{}) error {
+var IsAnonymous tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ interface{}) error {
 	roleName := RoleFrom(ctx)
 	if roleName == "anonymous" {
 		return nil
@@ -17,7 +17,7 @@ var isAnonymous tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ 
 	return fmt.Errorf("role is not anonymous")
 }
 
-var isAdmin tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ interface{}) error {
+var IsAdmin tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ interface{}) error {
 	roleName := RoleFrom(ctx)
 	if roleName == "admin" {
 		return nil
@@ -26,7 +26,7 @@ var isAdmin tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ inte
 	return fmt.Errorf("role is not admin")
 }
 
-var isEditor tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ interface{}) error {
+var IsEditor tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ interface{}) error {
 	roleName := RoleFrom(ctx)
 	if roleName == "editor" {
 		return nil
@@ -35,7 +35,7 @@ var isEditor tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ int
 	return fmt.Errorf("role is not editor")
 }
 
-var isViewer tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ interface{}) error {
+var IsViewer tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ interface{}) error {
 	roleName := RoleFrom(ctx)
 	if roleName == "viewer" {
 		return nil
@@ -48,13 +48,13 @@ func NewPermission() tate.RootFieldPermission {
 	return tate.RootFieldPermission{
 		ast.Query: tate.ChildFieldPermission{
 			"user": tate.ChildFieldPermission{
-				"id":   tate.OR(isEditor, isAdmin),
-				"name": tate.OR(isViewer, isEditor, isAdmin),
+				"id":   tate.OR(IsEditor, IsAdmin),
+				"name": tate.OR(IsViewer, IsEditor, IsAdmin),
 			},
-			"todos": tate.OR(isViewer, isEditor, isAdmin),
+			"todos": tate.OR(IsViewer, IsEditor, IsAdmin),
 		},
 		ast.Mutation: tate.ChildFieldPermission{
-			"createTodo": isAnonymous,
+			"createTodo": IsAnonymous,
 		},
 	}
 }
