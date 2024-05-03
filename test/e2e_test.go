@@ -56,7 +56,22 @@ func TestE2E(t *testing.T) {
 				name:     "query user as admin",
 				query:    `query { user(id: "U1") { id name } }`,
 				role:     "admin",
-				expected: `{"errors":[{"message":"permission denied for user","path":["user","id"],"extensions":{"fieldName":"user"}},{"message":"permission denied for user","path":["user","name"],"extensions":{"fieldName":"user"}}],"data":null}`,
+				expected: `{"data":{"user":{"id":"U1","name":"user1"}}}`,
+			}, {
+				name:     "query user as viewer",
+				query:    `query { user(id: "U1") { id name } }`,
+				role:     "viewer",
+				expected: `{"errors":[{"message":"permission denied for user","path":["user","id"],"extensions":{"fieldName":"user"}}],"data":null}`,
+			}, {
+				name:     "query todos as editor",
+				query:    `query { todos { id text } }`,
+				role:     "editor",
+				expected: `{"data":{"todos":[{"id":"1","text":"todo1"},{"id":"2","text":"todo2"},{"id":"3","text":"todo2"}]}}`,
+			}, {
+				name:     "query todos as anonymous",
+				query:    `query { todos { id text } }`,
+				role:     "anonymous",
+				expected: `{"errors":[{"message":"permission denied for todos","path":["todos"],"extensions":{"fieldName":"todos"}}],"data":null}`,
 			},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
@@ -73,6 +88,7 @@ func TestE2E(t *testing.T) {
 				}
 				req.Header = http.Header{
 					"Content-Type": []string{"application/json"},
+					"X-Role":       []string{tc.role},
 				}
 
 				t.Logf("request to %s", "http://localhost:"+port+"/v1/graphql")
