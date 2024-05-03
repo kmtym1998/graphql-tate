@@ -12,6 +12,7 @@ type Tate struct {
 	messageBuilder    func(ctx context.Context, fieldName string) string
 	extensionsBuilder func(ctx context.Context, fieldName string) map[string]interface{}
 	permission        RootFieldPermission
+	defaultRule       RuleFunc
 }
 
 func New(perm RootFieldPermission) (*Tate, error) {
@@ -35,16 +36,33 @@ func New(perm RootFieldPermission) (*Tate, error) {
 				"fieldName": fieldName,
 			}
 		},
-		permission: perm,
+		permission:  perm,
+		defaultRule: Any(),
 	}, nil
 }
 
 func (t *Tate) SetErrorMessageBuilder(f func(ctx context.Context, fieldName string) string) {
+	if f == nil {
+		panic("message builder must not be nil")
+	}
+
 	t.messageBuilder = f
 }
 
 func (t *Tate) SetExtensionsBuilder(f func(ctx context.Context, fieldName string) map[string]interface{}) {
+	if f == nil {
+		panic("extensions builder must not be nil")
+	}
+
 	t.extensionsBuilder = f
+}
+
+func (t *Tate) SetDefaultRule(f RuleFunc) {
+	if f == nil {
+		panic("default rule must not be nil")
+	}
+
+	t.defaultRule = f
 }
 
 func (t *Tate) AroundFields(ctx context.Context, next graphql.Resolver) (res interface{}, err error) {
@@ -78,7 +96,7 @@ func (t *Tate) AroundFields(ctx context.Context, next graphql.Resolver) (res int
 				fieldNames,
 			)
 			if ruleFunc == nil {
-				return next(ctx)
+				ruleFunc = t.defaultRule
 			}
 
 			if err := ruleFunc(ctx, fieldCtx.Field.Arguments, variables); err != nil {
