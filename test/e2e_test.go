@@ -73,6 +73,16 @@ func TestE2E(t *testing.T) {
 				role:     "anonymous",
 				expected: `{"errors":[{"message":"permission denied for todos","path":["todos"],"extensions":{"fieldName":"todos"}}],"data":null}`,
 			}, {
+				name:     "query todos and user as admin",
+				query:    `query { todos { id text } user(id: "U1") { id name } }`,
+				role:     "admin",
+				expected: `{"data":{"todos":[{"id":"1","text":"todo1"},{"id":"2","text":"todo2"},{"id":"3","text":"todo2"}],"user":{"id":"U1","name":"user1"}}}`,
+			}, {
+				name:     "query todos and user as viewer",
+				query:    `query { todos { id text } user(id: "U1") { id name } }`,
+				role:     "viewer",
+				expected: `{"errors":[{"message":"permission denied for user","path":["user","id"],"extensions":{"fieldName":"user"}}],"data":null}`,
+			}, {
 				name:     "mutation createTodo as admin",
 				query:    `mutation { createTodo(input: { text: "new todo" userId: "U1" }) { text } }`,
 				role:     "admin",
