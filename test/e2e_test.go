@@ -31,7 +31,7 @@ func TestE2E(t *testing.T) {
 			"todos": tate.OR(middleware.IsViewer, middleware.IsEditor, middleware.IsAdmin),
 		},
 		ast.Mutation: tate.ChildFieldPermission{
-			"createTodo": middleware.IsAnonymous,
+			"createTodo": middleware.IsAdmin,
 		},
 	}
 
@@ -73,15 +73,20 @@ func TestE2E(t *testing.T) {
 				role:     "anonymous",
 				expected: `{"errors":[{"message":"permission denied for todos","path":["todos"],"extensions":{"fieldName":"todos"}}],"data":null}`,
 			}, {
-				name:     "mutation createTodo as anonymous",
-				query:    `mutation { createTodo(input: { text: "new todo" userId: "U1" }) { id text } }`,
-				role:     "anonymous",
-				expected: `{"data":{"createTodo":{"id":"T4","text":"new todo"}}}`,
+				name:     "mutation createTodo as admin",
+				query:    `mutation { createTodo(input: { text: "new todo" userId: "U1" }) { text } }`,
+				role:     "admin",
+				expected: `{"data":{"createTodo":{"text":"new todo"}}}`,
 			}, {
 				name:     "mutation createTodo as viewer",
-				query:    `mutation { createTodo(input: { text: "new todo" userId: "U1" }) { id text } }`,
+				query:    `mutation { createTodo(input: { text: "new todo" userId: "U1" }) { text } }`,
 				role:     "viewer",
 				expected: `{"errors":[{"message":"permission denied for createTodo","path":["createTodo"],"extensions":{"fieldName":"createTodo"}}],"data":null}`,
+			}, {
+				name:     "mutation createUser as anonymous",
+				query:    `mutation { createUser(name: "new user") { name } }`,
+				role:     "anonymous",
+				expected: `{"data":{"createUser":{"name":"new user"}}}`,
 			},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
