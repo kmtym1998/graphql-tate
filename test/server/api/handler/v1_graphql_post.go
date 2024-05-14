@@ -5,9 +5,9 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	tate "github.com/kmtym1998/graphql-tate"
-	"github.com/kmtym1998/graphql-tate/example/generated"
-	"github.com/kmtym1998/graphql-tate/example/model"
-	"github.com/kmtym1998/graphql-tate/example/resolver"
+	"github.com/kmtym1998/graphql-tate/test/server/generated"
+	"github.com/kmtym1998/graphql-tate/test/server/model"
+	"github.com/kmtym1998/graphql-tate/test/server/resolver"
 )
 
 func PostV1GraphQLHandler(tate *tate.Tate) http.HandlerFunc {

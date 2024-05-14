@@ -1,6 +1,6 @@
 package resolver
 
-import "github.com/kmtym1998/graphql-tate/example/model"
+import "github.com/kmtym1998/graphql-tate/test/server/model"
 
 // This file will not be regenerated automatically.
 //

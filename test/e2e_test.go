@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	tate "github.com/kmtym1998/graphql-tate"
-	"github.com/kmtym1998/graphql-tate/example/api"
-	"github.com/kmtym1998/graphql-tate/example/api/middleware"
+	"github.com/kmtym1998/graphql-tate/test/server/api"
+	"github.com/kmtym1998/graphql-tate/test/server/api/middleware"
 	"github.com/vektah/gqlparser/v2/ast"
 )
 

@@ -6,10 +6,11 @@ package resolver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
-	"github.com/kmtym1998/graphql-tate/example/generated"
-	"github.com/kmtym1998/graphql-tate/example/model"
+	"github.com/kmtym1998/graphql-tate/test/server/generated"
+	"github.com/kmtym1998/graphql-tate/test/server/model"
 )
 
 // CreateTodo is the resolver for the createTodo field.
@@ -32,13 +33,13 @@ func (r *mutationResolver) UpdateTodoDone(ctx context.Context, id string, done b
 		}
 	}
 
-	return nil, fmt.Errorf("Todo not found")
+	return nil, errors.New("todo not found")
 }
 
 // CreateUser is the resolver for the createUser field.
 func (r *mutationResolver) CreateUser(ctx context.Context, name string) (*model.User, error) {
 	if name == "" {
-		return nil, fmt.Errorf("Name is empty")
+		return nil, errors.New("name is empty")
 	}
 
 	r.UserList = append(r.UserList, &model.User{
@@ -67,7 +68,7 @@ func (r *queryResolver) User(ctx context.Context, id string) (*model.User, error
 		}
 	}
 
-	return nil, fmt.Errorf("User not found")
+	return nil, errors.New("user not found")
 }
 
 // Mutation returns generated.MutationResolver implementation.

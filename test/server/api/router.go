@@ -6,8 +6,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	tate "github.com/kmtym1998/graphql-tate"
-	"github.com/kmtym1998/graphql-tate/example/api/handler"
-	"github.com/kmtym1998/graphql-tate/example/api/middleware"
+	"github.com/kmtym1998/graphql-tate/test/server/api/handler"
+	"github.com/kmtym1998/graphql-tate/test/server/api/middleware"
 )
 
 type Router struct {

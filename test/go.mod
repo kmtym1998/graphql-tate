@@ -1,4 +1,4 @@
-module github.com/kmtym1998/graphql-tate/example
+module github.com/kmtym1998/graphql-tate/test
 
 go 1.22.1
 
