@@ -9,8 +9,8 @@ import (
 )
 
 type Tate struct {
-	messageBuilder    func(ctx context.Context, fieldName string) string
-	extensionsBuilder func(ctx context.Context, fieldName string) map[string]interface{}
+	messageBuilder    func(ctx context.Context, fieldName string, err error) string
+	extensionsBuilder func(ctx context.Context, fieldName string, err error) map[string]interface{}
 	permission        RootFieldPermission
 	defaultRule       RuleFunc
 }
@@ -28,10 +28,10 @@ func New(perm RootFieldPermission) (*Tate, error) {
 	}
 
 	return &Tate{
-		messageBuilder: func(ctx context.Context, fieldName string) string {
-			return fmt.Sprintf("permission denied for %s", fieldName)
+		messageBuilder: func(ctx context.Context, fieldName string, err error) string {
+			return fmt.Sprintf("permission denied for %s: %v", fieldName, err)
 		},
-		extensionsBuilder: func(ctx context.Context, fieldName string) map[string]interface{} {
+		extensionsBuilder: func(ctx context.Context, fieldName string, err error) map[string]interface{} {
 			return map[string]interface{}{
 				"fieldName": fieldName,
 			}
@@ -41,7 +41,7 @@ func New(perm RootFieldPermission) (*Tate, error) {
 	}, nil
 }
 
-func (t *Tate) SetErrorMessageBuilder(f func(ctx context.Context, fieldName string) string) {
+func (t *Tate) SetErrorMessageBuilder(f func(ctx context.Context, fieldName string, err error) string) {
 	if f == nil {
 		panic("message builder must not be nil")
 	}
@@ -49,7 +49,7 @@ func (t *Tate) SetErrorMessageBuilder(f func(ctx context.Context, fieldName stri
 	t.messageBuilder = f
 }
 
-func (t *Tate) SetExtensionsBuilder(f func(ctx context.Context, fieldName string) map[string]interface{}) {
+func (t *Tate) SetExtensionsBuilder(f func(ctx context.Context, fieldName string, err error) map[string]interface{}) {
 	if f == nil {
 		panic("extensions builder must not be nil")
 	}
@@ -84,8 +84,8 @@ func (t *Tate) AroundFields(ctx context.Context, next graphql.Resolver) (res int
 		case RuleFunc:
 			if err := v(ctx, fieldCtx.Field.Arguments, variables); err != nil {
 				return nil, &gqlerror.Error{
-					Message:    t.messageBuilder(ctx, fieldName),
-					Extensions: t.extensionsBuilder(ctx, fieldName),
+					Message:    t.messageBuilder(ctx, fieldName, err),
+					Extensions: t.extensionsBuilder(ctx, fieldName, err),
 					Path:       graphql.GetPath(ctx),
 					Err:        err,
 				}
@@ -101,8 +101,8 @@ func (t *Tate) AroundFields(ctx context.Context, next graphql.Resolver) (res int
 
 			if err := ruleFunc(ctx, fieldCtx.Field.Arguments, variables); err != nil {
 				return nil, &gqlerror.Error{
-					Message:    t.messageBuilder(ctx, fieldName),
-					Extensions: t.extensionsBuilder(ctx, fieldName),
+					Message:    t.messageBuilder(ctx, fieldName, err),
+					Extensions: t.extensionsBuilder(ctx, fieldName, err),
 					Path:       graphql.GetPath(ctx),
 					Err:        err,
 				}
