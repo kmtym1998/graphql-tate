@@ -12,12 +12,12 @@ type Todo {
 type User {
   id: ID!
   name: String!
-  todos(limit: Int!, offset: Int!): [Todo!]!
+  todos(limit: Int, offset: Int): [Todo!]!
 }
 
 type Query {
   todos: [Todo!]!
-  users(limit: Int!, offset: Int!): [User!]!
+  users(limit: Int, offset: Int): [User!]!
   user(id: ID!): User!
 }
 
