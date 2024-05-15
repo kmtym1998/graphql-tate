@@ -14,10 +14,10 @@ type ruleFuncTestCase struct {
 	expected error
 }
 
-var ruleWithNoErr RuleFunc = func(_ context.Context, _ ast.ArgumentList, _ interface{}) error {
+var ruleWithNoErr RuleFunc = func(_ context.Context, _ ast.ArgumentList, _ map[string]interface{}) error {
 	return nil
 }
-var ruleWithErr RuleFunc = func(_ context.Context, _ ast.ArgumentList, _ interface{}) error {
+var ruleWithErr RuleFunc = func(_ context.Context, _ ast.ArgumentList, _ map[string]interface{}) error {
 	return errors.New("error")
 }
 

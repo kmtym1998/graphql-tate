@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -9,7 +10,7 @@ import (
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
-var IsAdmin tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ interface{}) error {
+var IsAdmin tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ map[string]interface{}) error {
 	roleName := RoleFrom(ctx)
 	if roleName == "admin" {
 		return nil
@@ -18,7 +19,7 @@ var IsAdmin tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ inte
 	return fmt.Errorf("role is not admin")
 }
 
-var IsEditor tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ interface{}) error {
+var IsEditor tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ map[string]interface{}) error {
 	roleName := RoleFrom(ctx)
 	if roleName == "editor" {
 		return nil
@@ -27,7 +28,7 @@ var IsEditor tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ int
 	return fmt.Errorf("role is not editor")
 }
 
-var IsViewer tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ interface{}) error {
+var IsViewer tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ map[string]interface{}) error {
 	roleName := RoleFrom(ctx)
 	if roleName == "viewer" {
 		return nil
@@ -36,7 +37,7 @@ var IsViewer tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ int
 	return fmt.Errorf("role is not viewer")
 }
 
-var IsAnonymous tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ interface{}) error {
+var IsAnonymous tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ map[string]interface{}) error {
 	roleName := RoleFrom(ctx)
 	if roleName == "anonymous" {
 		return nil
@@ -45,7 +46,7 @@ var IsAnonymous tate.RuleFunc = func(ctx context.Context, _ ast.ArgumentList, _ 
 	return fmt.Errorf("role is not anonymous")
 }
 
-var OnlyAnonymousMustHaveLimit tate.RuleFunc = func(ctx context.Context, args ast.ArgumentList, vars interface{}) error {
+var OnlyAnonymousMustHaveLimit tate.RuleFunc = func(ctx context.Context, args ast.ArgumentList, variables map[string]interface{}) error {
 	roleName := RoleFrom(ctx)
 	if roleName == "" {
 		roleName = "anonymous"
@@ -61,35 +62,35 @@ var OnlyAnonymousMustHaveLimit tate.RuleFunc = func(ctx context.Context, args as
 			continue
 		}
 
-		limitValOrVarName, err := strconv.Atoi(arg.Value.Raw)
-		if err == nil {
-			if limitValOrVarName > 50 {
-				return fmt.Errorf("limit is too large (from arg)")
+		if arg.Value.Kind == ast.Variable {
+			if limitVar, ok := variables[varName]; ok {
+				if limitVal, ok := limitVar.(int64); ok {
+					if limitVal > 50 {
+						return errors.New("limit is too large (from variable)")
+					}
+
+					return nil
+				}
+
+				return errors.New("limit is invalid (from variable)")
 			}
-		}
 
-		varName = arg.Value.Raw
+			return errors.New("limit arg exists but variable is not set")
+		} else {
+			limitVal, err := strconv.Atoi(arg.Value.String())
+			if err != nil {
+				return errors.New("limit exists but is invalid (from arg)")
+			}
 
-		break
-	}
-
-	varsMap, ok := vars.(map[string]interface{})
-	if !ok {
-		return nil
-	}
-
-	if limitVar, ok := varsMap[varName]; ok {
-		limitVal, ok := limitVar.(int64)
-		if ok {
 			if limitVal > 50 {
-				return fmt.Errorf("limit is too large (from variable)")
+				return errors.New("limit is too large (from variable)")
 			}
 
 			return nil
 		}
 	}
 
-	return fmt.Errorf("limit is not set")
+	return errors.New("limit not set")
 }
 
 func NewPermission() tate.RootFieldPermission {

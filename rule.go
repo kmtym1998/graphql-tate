@@ -25,7 +25,7 @@ func (ChildFieldPermission) isPermitter() {}
 
 // RuleFunc is a function that checks if the user has permission to access the field
 // It returns nil if the user has permission, otherwise it returns an error
-type RuleFunc func(ctx context.Context, args ast.ArgumentList, variable interface{}) error
+type RuleFunc func(ctx context.Context, args ast.ArgumentList, variable map[string]interface{}) error
 
 var _ Permitter = RuleFunc(nil)
 
@@ -53,7 +53,7 @@ func (p ChildFieldPermission) validate() error {
 func OR(
 	rules ...RuleFunc,
 ) RuleFunc {
-	return func(ctx context.Context, args ast.ArgumentList, variable interface{}) error {
+	return func(ctx context.Context, args ast.ArgumentList, variable map[string]interface{}) error {
 		errs := make([]error, 0, len(rules))
 		for _, rule := range rules {
 			if err := rule(ctx, args, variable); err != nil {
@@ -72,7 +72,7 @@ func OR(
 func AND(
 	rules ...RuleFunc,
 ) RuleFunc {
-	return func(ctx context.Context, args ast.ArgumentList, variable interface{}) error {
+	return func(ctx context.Context, args ast.ArgumentList, variable map[string]interface{}) error {
 		for _, rule := range rules {
 			if err := rule(ctx, args, variable); err != nil {
 				return err
@@ -87,7 +87,7 @@ func NOT(
 	rule RuleFunc,
 	msg string,
 ) RuleFunc {
-	return func(ctx context.Context, args ast.ArgumentList, variable interface{}) error {
+	return func(ctx context.Context, args ast.ArgumentList, variable map[string]interface{}) error {
 		if rule == nil {
 			return nil
 		}
@@ -101,13 +101,13 @@ func NOT(
 }
 
 func Any() RuleFunc {
-	return func(ctx context.Context, args ast.ArgumentList, variable interface{}) error {
+	return func(ctx context.Context, args ast.ArgumentList, variable map[string]interface{}) error {
 		return nil
 	}
 }
 
 func None() RuleFunc {
-	return func(ctx context.Context, args ast.ArgumentList, variable interface{}) error {
+	return func(ctx context.Context, args ast.ArgumentList, variable map[string]interface{}) error {
 		return fmt.Errorf("no permission allowed for this field")
 	}
 }
