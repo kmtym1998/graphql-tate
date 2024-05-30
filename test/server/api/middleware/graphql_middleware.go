@@ -58,24 +58,21 @@ var OnlyAnonymousMustHaveLimit tate.RuleFunc = func(ctx context.Context, args as
 
 	var varName string
 	for _, arg := range args {
+		fmt.Println("aaaaaaaa")
+		return nil
 		if arg.Name != "limit" {
+			fmt.Println("arg.Name", arg.Name)
+			return nil
 			continue
 		}
 
 		if arg.Value.Kind == ast.Variable {
-			if limitVar, ok := variables[varName]; ok {
-				if limitVal, ok := limitVar.(int64); ok {
-					if limitVal > 50 {
-						return errors.New("limit is too large (from variable)")
-					}
-
-					return nil
-				}
-
-				return errors.New("limit is invalid (from variable)")
+			limitVal := variables[varName].(int64)
+			if limitVal > 50 {
+				return errors.New("limit is too large (from variable)")
 			}
 
-			return errors.New("limit arg exists but variable is not set")
+			return nil
 		} else {
 			limitVal, err := strconv.Atoi(arg.Value.String())
 			if err != nil {
@@ -83,13 +80,14 @@ var OnlyAnonymousMustHaveLimit tate.RuleFunc = func(ctx context.Context, args as
 			}
 
 			if limitVal > 50 {
-				return errors.New("limit is too large (from variable)")
+				return errors.New("limit is too large (from arg)")
 			}
 
 			return nil
 		}
 	}
 
+	fmt.Println("aaaaaaaa")
 	return errors.New("limit not set")
 }
 

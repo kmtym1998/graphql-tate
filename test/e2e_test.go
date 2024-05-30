@@ -29,6 +29,7 @@ func TestE2E(t *testing.T) {
 				"name": tate.OR(middleware.IsViewer, middleware.IsEditor, middleware.IsAdmin),
 			},
 			"todos": tate.OR(middleware.IsViewer, middleware.IsEditor, middleware.IsAdmin),
+			"users": middleware.OnlyAnonymousMustHaveLimit,
 		},
 		ast.Mutation: tate.ChildFieldPermission{
 			"createTodo": middleware.IsAdmin,
@@ -61,7 +62,7 @@ func TestE2E(t *testing.T) {
 				name:     "query user as viewer",
 				query:    `query { user(id: "U1") { id name } }`,
 				role:     "viewer",
-				expected: `{"errors":[{"message":"permission denied for user","path":["user","id"],"extensions":{"fieldName":"user"}}],"data":null}`,
+				expected: `{"errors":[{"message":"permission denied for user: role is not editor\nrole is not admin","path":["user","id"],"extensions":{"fieldName":"user"}}],"data":null}`,
 			}, {
 				name:     "query todos as editor",
 				query:    `query { todos { id text } }`,
@@ -71,7 +72,7 @@ func TestE2E(t *testing.T) {
 				name:     "query todos as anonymous",
 				query:    `query { todos { id text } }`,
 				role:     "anonymous",
-				expected: `{"errors":[{"message":"permission denied for todos","path":["todos"],"extensions":{"fieldName":"todos"}}],"data":null}`,
+				expected: `{"errors":[{"message":"permission denied for todos: role is not viewer\nrole is not editor\nrole is not admin","path":["todos"],"extensions":{"fieldName":"todos"}}],"data":null}`,
 			}, {
 				name:     "query todos and user as admin",
 				query:    `query { todos { id text } user(id: "U1") { id name } }`,
@@ -81,7 +82,7 @@ func TestE2E(t *testing.T) {
 				name:     "query todos and user as viewer",
 				query:    `query { todos { id text } user(id: "U1") { id name } }`,
 				role:     "viewer",
-				expected: `{"errors":[{"message":"permission denied for user","path":["user","id"],"extensions":{"fieldName":"user"}}],"data":null}`,
+				expected: `{"errors":[{"message":"permission denied for user: role is not editor\nrole is not admin","path":["user","id"],"extensions":{"fieldName":"user"}}],"data":null}`,
 			}, {
 				name:     "mutation createTodo as admin",
 				query:    `mutation { createTodo(input: { text: "new todo" userId: "U1" }) { text } }`,
@@ -91,12 +92,27 @@ func TestE2E(t *testing.T) {
 				name:     "mutation createTodo as viewer",
 				query:    `mutation { createTodo(input: { text: "new todo" userId: "U1" }) { text } }`,
 				role:     "viewer",
-				expected: `{"errors":[{"message":"permission denied for createTodo","path":["createTodo"],"extensions":{"fieldName":"createTodo"}}],"data":null}`,
+				expected: `{"errors":[{"message":"permission denied for createTodo: role is not admin","path":["createTodo"],"extensions":{"fieldName":"createTodo"}}],"data":null}`,
 			}, {
 				name:     "mutation createUser as anonymous",
 				query:    `mutation { createUser(name: "new user") { name } }`,
 				role:     "anonymous",
 				expected: `{"data":{"createUser":{"name":"new user"}}}`,
+			}, {
+				name:     "query todos as anonymous without limit",
+				query:    `query { users { id } }`,
+				role:     "anonymous",
+				expected: `{"errors":[{"message":"permission denied for users: limit is not set","path":["users"],"extensions":{"fieldName":"users"}}],"data":null}`,
+			}, {
+				name:     "query todos as anonymous with limit",
+				query:    `query { users(limit: 10) { id } }`,
+				role:     "anonymous",
+				expected: `{"data":{"users":[{"id":"U1"},{"id":"U2"},{"id":"U3"}]}}`,
+			}, {
+				name:     "query todos as admin without limit",
+				query:    `query { users { id } }`,
+				role:     "admin",
+				expected: `{"data":{"users":[{"id":"U1"},{"id":"U2"},{"id":"U3"}]}}`,
 			},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
@@ -133,7 +149,7 @@ func TestE2E(t *testing.T) {
 				}
 
 				if string(respBody) != tc.expected {
-					t.Errorf("unexpected response body:\n\texpected: %s\n\tactual: %s", tc.expected, respBody)
+					t.Errorf("unexpected response body:\n\texpected: %s\n\tactual:   %s", tc.expected, respBody)
 				}
 			})
 		}
